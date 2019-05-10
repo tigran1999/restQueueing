@@ -10,7 +10,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 @Configuration
-@EnableAsync
 public class AsyncConfig {
 
     private int coreCount = Runtime.getRuntime().availableProcessors();
@@ -19,7 +18,8 @@ public class AsyncConfig {
     public Executor getAsyncExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(coreCount);
-        executor.setMaxPoolSize(coreCount);
+        executor.setMaxPoolSize(25);
+        executor.setQueueCapacity(25);
         executor.setThreadNamePrefix("threadPoolExecutor-");
         executor.initialize();
         return executor;
