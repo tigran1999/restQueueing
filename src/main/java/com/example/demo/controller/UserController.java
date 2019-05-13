@@ -9,17 +9,15 @@ import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.time.LocalTime;
-import java.util.concurrent.CompletableFuture;
 
 @RestController
 @Api(value = "Users", description = "REST API for Users", tags = { "Users" })
@@ -29,10 +27,13 @@ public class UserController {
 
     private final UserDetailsService userDetailsService;
 
+    private final PasswordEncoder passwordEncoder;
+
     @Autowired
-    public UserController(JwtTokenUtil jwtTokenUtil, @Qualifier("currentUserDetailsService") UserDetailsService userDetailsService) {
+    public UserController(JwtTokenUtil jwtTokenUtil, @Qualifier("currentUserDetailsService") UserDetailsService userDetailsService, PasswordEncoder passwordEncoder) {
         this.jwtTokenUtil = jwtTokenUtil;
         this.userDetailsService = userDetailsService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @PostMapping(value = "/auth")
@@ -42,6 +43,9 @@ public class UserController {
             @ApiResponse(code = 401, message = "User UNAUTHORIZED")})
     public ResponseEntity<?> createAuthenticationToken(@RequestBody JwtAuthenticationRequest authenticationRequest) throws AuthenticationException {
         UserDetails userDetails = userDetailsService.loadUserByUsername(authenticationRequest.getEmail());
+        if (!passwordEncoder.matches(authenticationRequest.getPassword(),userDetails.getPassword())){
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Wrong email or password");
+        };
         final String token = jwtTokenUtil.generateToken(userDetails.getUsername());
         return ResponseEntity.ok(
                 JwtAuthenticationResponse
@@ -51,17 +55,6 @@ public class UserController {
                         .build());
     }
 
-    @GetMapping("/test")
-
-    public CompletableFuture<ResponseEntity<?>> test() {
-        System.out.println("method was started " + LocalTime.now());
-        try {
-            Thread.sleep(10000);         // demonstrate long execution
-        } catch (InterruptedException ignored) {
-        }
-        System.out.println("method was finished " + LocalTime.now());
-        return CompletableFuture.completedFuture(ResponseEntity.ok("test"));
-    }
 
 
 
