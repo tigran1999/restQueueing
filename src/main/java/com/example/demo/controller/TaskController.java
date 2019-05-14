@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -33,6 +34,7 @@ public class TaskController {
         Task task = Task.builder()
                 .taskName(name)
                 .taskType(TaskType.CREATED)
+                .createdDate(new Date())
                 .build();
         taskRepository.save(task);
         return ResponseEntity.ok("Created by  "+task.getId() + " id");
@@ -54,7 +56,7 @@ public class TaskController {
         if (taskRepository.countByTaskType(TaskType.INPROGRESS) > 0) {
             return;
         }
-        Sort sort = new Sort(Sort.Direction.ASC, "id");
+        Sort sort = new Sort(Sort.Direction.ASC, "createdDate");
         PageRequest of = PageRequest.of(0, Runtime.getRuntime().availableProcessors(), sort);
         List<Task> allByTaskType = taskRepository.findAllByTaskType(TaskType.CREATED, of).getContent();
         changeTaskStatuses(allByTaskType);
@@ -80,6 +82,7 @@ public class TaskController {
                 }
                 task.setTaskName(task.getTaskName() + "_progress");
                 task.setTaskType(TaskType.FINISHED);
+                task.setFinishedDate(new Date());
                 taskRepository.save(task);
             }
         });

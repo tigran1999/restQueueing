@@ -13,6 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 @SpringBootApplication
 @EnableAsync
+@EnableScheduling
 public class DemoApplication implements CommandLineRunner {
 
     private final PasswordEncoder passwordEncoder;

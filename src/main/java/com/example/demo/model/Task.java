@@ -34,7 +34,7 @@ public class Task {
     private String taskName;
 
     @Column(name = "created_date")
-    private Date createdDate = new Date();
+    private Date createdDate;
 
     @Column(name="finishedDate")
     private Date finishedDate;
