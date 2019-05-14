@@ -6,8 +6,12 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Type;
 
 import javax.persistence.*;
+import java.util.Date;
+import java.util.UUID;
 
 @Data
 @AllArgsConstructor
@@ -18,14 +22,21 @@ import javax.persistence.*;
 public class Task {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+    @GeneratedValue
+    @Type(type="org.hibernate.type.UUIDCharType")
+    private UUID id = UUID.randomUUID();
 
-    @Column(name = "task_type")
+    @Column(name = "task_status")
     @Enumerated(value = EnumType.STRING)
     private TaskType taskType;
 
     @Column(name = "task_name")
     private String taskName;
+
+    @Column(name = "created_date")
+    private Date createdDate = new Date();
+
+    @Column(name="finishedDate")
+    private Date finishedDate;
 
 }

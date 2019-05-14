@@ -6,6 +6,7 @@ import com.example.demo.repository.TaskRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,7 +14,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 @RestController
 public class TaskController {
@@ -32,7 +36,17 @@ public class TaskController {
                 .taskType(TaskType.CREATED)
                 .build();
         taskRepository.save(task);
-        return ResponseEntity.ok("Created");
+        return ResponseEntity.ok("Created by  "+task.getId() + " id");
+    }
+
+    @GetMapping("/checkStatus/{id}")
+    public ResponseEntity<?> checkStatus(@PathVariable UUID id){
+        Optional<Task> byId = taskRepository.getById(id);
+        if (byId.isPresent()) {
+            return ResponseEntity.ok("Your task status is " + byId.get().getTaskType());
+        }else{
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Task with " + id + " doesn't exist");
+        }
     }
 
     @Scheduled(fixedDelay = 10000)
@@ -44,15 +58,15 @@ public class TaskController {
         Sort sort = new Sort(Sort.Direction.ASC, "id");
         PageRequest of = PageRequest.of(0, Runtime.getRuntime().availableProcessors(), sort);
         List<Task> allByTaskType = taskRepository.findAllByTaskType(TaskType.CREATED, of).getContent();
-        changeTaskStatuses(allByTaskType, TaskType.INPROGRESS);
+        changeTaskStatuses(allByTaskType);
         if (allByTaskType.size() > 0) {
             progressTasks(allByTaskType);
         }
     }
 
-    private void changeTaskStatuses(List<Task> tasks, TaskType taskType) {
+    private void changeTaskStatuses(List<Task> tasks) {
         for (Task task : tasks) {
-            task.setTaskType(taskType);
+            task.setTaskType(TaskType.INPROGRESS);
             taskRepository.save(task);
         }
     }
