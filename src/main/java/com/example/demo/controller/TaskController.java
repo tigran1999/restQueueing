@@ -1,91 +1,84 @@
 package com.example.demo.controller;
 
 import com.example.demo.model.Task;
-import com.example.demo.model.enums.TaskType;
+import com.example.demo.model.User;
 import com.example.demo.repository.TaskRepository;
+import com.example.demo.security.CurrentUser;
+import lombok.Cleanup;
+import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import javax.servlet.http.HttpServletResponse;
+import java.io.*;
 import java.util.Date;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.Executors;
+import java.util.concurrent.CompletableFuture;
 
 @RestController
 public class TaskController {
 
     private final TaskRepository taskRepository;
 
+    @Value("${file.upload.directory}")
+    private String uploadPath;
+
     @Autowired
     public TaskController(TaskRepository taskRepository) {
         this.taskRepository = taskRepository;
     }
 
-    @GetMapping("/task/{name}")
-    public ResponseEntity<?> addTask(@PathVariable String name) {
+    @PostMapping("/task")
+    public CompletableFuture<ResponseEntity<?>> test(@RequestParam(name = "file", required = false) MultipartFile multipartFile,
+                                                     HttpServletResponse response,
+                                                     @AuthenticationPrincipal CurrentUser currentUser) throws IOException {
+        Task byDownloaded = taskRepository.findByDownloadedAndUser(false, currentUser.getUser());
+        if (byDownloaded != null) {
+            byDownloaded.setDownloaded(true);
+            taskRepository.save(byDownloaded);
+            downloadFile(byDownloaded, response);
+        } else {
+            Task task = saveTask(multipartFile, currentUser.getUser());
+            try {
+                Thread.sleep(10000); // imitate  long execution
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            task.setFinishedDate(new Date());
+        }
+        return CompletableFuture.completedFuture(ResponseEntity.status(HttpStatus.OK).build());
+    }
+
+    private Task saveTask(MultipartFile multipartFile, User user) throws IOException {
+        String fileUrl = uploadPath + multipartFile.getOriginalFilename();
+        FileOutputStream fileOutputStream = new FileOutputStream(new File(fileUrl));
+        fileOutputStream.write(multipartFile.getBytes());
         Task task = Task.builder()
-                .taskName(name)
-                .taskType(TaskType.CREATED)
+                .downloaded(false)
+                .fileUrl(fileUrl)
                 .createdDate(new Date())
+                .user(user)
                 .build();
         taskRepository.save(task);
-        return ResponseEntity.ok("Created by  "+task.getId() + " id");
+        return task;
     }
 
-    @GetMapping("/checkStatus/{id}")
-    public ResponseEntity<?> checkStatus(@PathVariable UUID id){
-        Optional<Task> byId = taskRepository.getById(id);
-        if (byId.isPresent()) {
-            return ResponseEntity.ok("Your task status is " + byId.get().getTaskType());
-        }else{
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Task with " + id + " doesn't exist");
-        }
-    }
-
-    @Scheduled(fixedDelay = 10000)
-    public void processThem() {
-
-        if (taskRepository.countByTaskType(TaskType.INPROGRESS) > 0) {
-            return;
-        }
-        Sort sort = new Sort(Sort.Direction.ASC, "createdDate");
-        PageRequest of = PageRequest.of(0, Runtime.getRuntime().availableProcessors(), sort);
-        List<Task> allByTaskType = taskRepository.findAllByTaskType(TaskType.CREATED, of).getContent();
-        changeTaskStatuses(allByTaskType);
-        if (allByTaskType.size() > 0) {
-            progressTasks(allByTaskType);
-        }
-    }
-
-    private void changeTaskStatuses(List<Task> tasks) {
-        for (Task task : tasks) {
-            task.setTaskType(TaskType.INPROGRESS);
-            taskRepository.save(task);
-        }
-    }
-
-    private void progressTasks(List<Task> tasks) {
-        Executors.newCachedThreadPool().submit(() -> {
-            for (Task task : tasks) {
-                try {
-                    Thread.sleep(10000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                task.setTaskName(task.getTaskName() + "_progress");
-                task.setTaskType(TaskType.FINISHED);
-                task.setFinishedDate(new Date());
-                taskRepository.save(task);
-            }
-        });
+    private void downloadFile(Task task, HttpServletResponse response) throws IOException {
+        File file = new File(task.getFileUrl());
+        @Cleanup InputStream fileInputStream = new FileInputStream(file);
+        OutputStream output = response.getOutputStream();
+        response.reset();
+        response.setContentType("application/octet-stream");
+        response.setContentLength((int) (file.length()));
+        response.setHeader("Content-Disposition", "attachment; filename=\"" + file.getName() + "\"");
+        IOUtils.copyLarge(fileInputStream, output);
+        output.flush();
     }
 
 }

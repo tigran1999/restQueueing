@@ -26,4 +26,5 @@ public class CurrentUserDetailsService implements UserDetailsService {
         }
         return new CurrentUser(user);
     }
+
 }

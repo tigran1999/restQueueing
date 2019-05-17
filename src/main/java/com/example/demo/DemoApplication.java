@@ -16,6 +16,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @EnableScheduling
 public class DemoApplication implements CommandLineRunner {
 
+
+    public static void main(String[] args) {
+        SpringApplication.run(DemoApplication.class, args);
+    }
+
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
 
@@ -25,13 +30,18 @@ public class DemoApplication implements CommandLineRunner {
         this.userRepository = userRepository;
     }
 
-    public static void main(String[] args) {
-
-        SpringApplication.run(DemoApplication.class, args);
-    }
-
     @Override
-    public void run(String... args) throws Exception {
+    public void run(String... args) {
 
+        if (userRepository.count() == 0) {
+            User user = User.builder()
+                    .email("admin")
+                    .name("admin")
+                    .password(passwordEncoder.encode("admin"))
+                    .userType(UserType.ADMIN)
+                    .build();
+            userRepository.save(user);
+        }
     }
+
 }
