@@ -33,13 +33,18 @@ public class TaskController {
 
     @PostMapping("/task")
     public CompletableFuture<ResponseEntity<?>> test(@RequestParam(name = "file", required = false) MultipartFile multipartFile,
+                                                     @RequestParam(name="taskId",required = false) Integer taskId,
                                                      HttpServletResponse response
     ) throws IOException {
-        Task byDownloaded = taskRepository.findByDownloaded(false);
+        if (taskId == null){
+            taskId = 0;
+        }
+        Task byDownloaded = taskRepository.findByDownloadedAndId(false,taskId);
         if (byDownloaded != null) {
             byDownloaded.setDownloaded(true);
             taskRepository.save(byDownloaded);
             downloadFile(byDownloaded, response);
+            return CompletableFuture.completedFuture(ResponseEntity.status(HttpStatus.OK).build());
         } else {
             Task task = saveTask(multipartFile);
             try {
@@ -48,8 +53,8 @@ public class TaskController {
                 e.printStackTrace();
             }
             task.setFinishedDate(new Date());
+            return CompletableFuture.completedFuture(ResponseEntity.ok(task.getId()));
         }
-        return CompletableFuture.completedFuture(ResponseEntity.status(HttpStatus.OK).build());
     }
 
     private Task saveTask(MultipartFile multipartFile) throws IOException {

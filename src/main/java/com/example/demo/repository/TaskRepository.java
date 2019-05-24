@@ -5,6 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface TaskRepository extends JpaRepository<Task, Integer> {
 
-    Task findByDownloaded(boolean downloaded);
+    Task findByDownloadedAndId(boolean downloaded,int id);
 
 }

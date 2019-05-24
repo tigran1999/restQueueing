@@ -18,9 +18,8 @@ import java.util.UUID;
 public class Task {
 
     @Id
-    @GeneratedValue
-    @Type(type = "org.hibernate.type.UUIDCharType")
-    private UUID id = UUID.randomUUID();
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int id;
 
     @Column(name = "file_url")
     private String fileUrl;
