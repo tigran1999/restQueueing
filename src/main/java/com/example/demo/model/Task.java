@@ -12,27 +12,19 @@ import java.util.Date;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-@Table
 @Builder
 public class Task {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue
     private int id;
 
-    @Column
     private Date createdDate;
 
-    @Column
     private Date finishedDate;
 
-    @Column
     private boolean downloaded;
 
-    @Column
     private String fileUrl;
-
-    @ManyToOne
-    private User user;
 
 }

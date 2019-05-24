@@ -1,16 +1,13 @@
 package com.example.demo.controller;
 
 import com.example.demo.model.Task;
-import com.example.demo.model.User;
 import com.example.demo.repository.TaskRepository;
-import com.example.demo.security.CurrentUser;
 import lombok.Cleanup;
 import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -36,15 +33,15 @@ public class TaskController {
 
     @PostMapping("/task")
     public CompletableFuture<ResponseEntity<?>> test(@RequestParam(name = "file", required = false) MultipartFile multipartFile,
-                                                     HttpServletResponse response,
-                                                     @AuthenticationPrincipal CurrentUser currentUser) throws IOException {
-        Task byDownloaded = taskRepository.findByDownloadedAndUser(false, currentUser.getUser());
+                                                     HttpServletResponse response
+    ) throws IOException {
+        Task byDownloaded = taskRepository.findByDownloaded(false);
         if (byDownloaded != null) {
             byDownloaded.setDownloaded(true);
             taskRepository.save(byDownloaded);
             downloadFile(byDownloaded, response);
         } else {
-            Task task = saveTask(multipartFile, currentUser.getUser());
+            Task task = saveTask(multipartFile);
             try {
                 Thread.sleep(10000); // imitate  long execution
             } catch (InterruptedException e) {
@@ -55,7 +52,7 @@ public class TaskController {
         return CompletableFuture.completedFuture(ResponseEntity.status(HttpStatus.OK).build());
     }
 
-    private Task saveTask(MultipartFile multipartFile, User user) throws IOException {
+    private Task saveTask(MultipartFile multipartFile) throws IOException {
         String fileUrl = uploadPath + multipartFile.getOriginalFilename();
         FileOutputStream fileOutputStream = new FileOutputStream(new File(fileUrl));
         fileOutputStream.write(multipartFile.getBytes());
@@ -63,7 +60,6 @@ public class TaskController {
                 .downloaded(false)
                 .fileUrl(fileUrl)
                 .createdDate(new Date())
-                .user(user)
                 .build();
         taskRepository.save(task);
         return task;
