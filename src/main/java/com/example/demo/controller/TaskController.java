@@ -2,10 +2,8 @@ package com.example.demo.controller;
 
 import com.example.demo.model.Task;
 import com.example.demo.repository.TaskRepository;
-import lombok.Cleanup;
-import org.apache.commons.io.IOUtils;
+import com.example.demo.service.TaskService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -14,72 +12,39 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletResponse;
-import java.io.*;
-import java.util.Date;
-import java.util.concurrent.CompletableFuture;
+import java.io.IOException;
+import java.util.Optional;
 
 @RestController
 public class TaskController {
 
     private final TaskRepository taskRepository;
-
-    @Value("${file.upload.directory}")
-    private String uploadPath;
+    private final TaskService taskService;
 
     @Autowired
-    public TaskController(TaskRepository taskRepository) {
+    public TaskController(TaskRepository taskRepository, TaskService taskService) {
         this.taskRepository = taskRepository;
+        this.taskService = taskService;
     }
 
     @PostMapping("/task")
-    public CompletableFuture<ResponseEntity<?>> test(@RequestParam(name = "file", required = false) MultipartFile multipartFile,
-                                                     @RequestParam(name="taskId",required = false) Integer taskId,
-                                                     HttpServletResponse response
-    ) throws IOException {
-        if (taskId == null){
+    public ResponseEntity<?> test(@RequestParam(name = "file", required = false) MultipartFile multipartFile,
+                                  @RequestParam(name = "taskId", required = false) Integer taskId,
+                                  HttpServletResponse response) throws IOException {
+        if (taskId == null) {
             taskId = 0;
         }
-        Task byDownloaded = taskRepository.findByDownloadedAndId(false,taskId);
-        if (byDownloaded != null) {
-            byDownloaded.setDownloaded(true);
-            taskRepository.save(byDownloaded);
-            downloadFile(byDownloaded, response);
-            return CompletableFuture.completedFuture(ResponseEntity.status(HttpStatus.OK).build());
+        Optional<Task> optionalTask = taskRepository.findById(taskId);
+        if (optionalTask.isPresent() && !optionalTask.get().isDownloaded()) {
+            Task task = optionalTask.get();
+            task.setDownloaded(true);
+            taskRepository.save(task);
+            taskService.downloadFile(task, response);
+            return ResponseEntity.status(HttpStatus.OK).build();
         } else {
-            Task task = saveTask(multipartFile);
-            try {
-                Thread.sleep(10000); // imitate  long execution
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            task.setFinishedDate(new Date());
-            return CompletableFuture.completedFuture(ResponseEntity.ok(task.getId()));
+            Task task = taskService.saveTask(multipartFile);
+            return (ResponseEntity.ok(task.getId()));
         }
-    }
-
-    private Task saveTask(MultipartFile multipartFile) throws IOException {
-        String fileUrl = uploadPath + multipartFile.getOriginalFilename();
-        FileOutputStream fileOutputStream = new FileOutputStream(new File(fileUrl));
-        fileOutputStream.write(multipartFile.getBytes());
-        Task task = Task.builder()
-                .downloaded(false)
-                .fileUrl(fileUrl)
-                .createdDate(new Date())
-                .build();
-        taskRepository.save(task);
-        return task;
-    }
-
-    private void downloadFile(Task task, HttpServletResponse response) throws IOException {
-        File file = new File(task.getFileUrl());
-        @Cleanup InputStream fileInputStream = new FileInputStream(file);
-        OutputStream output = response.getOutputStream();
-        response.reset();
-        response.setContentType("application/octet-stream");
-        response.setContentLength((int) (file.length()));
-        response.setHeader("Content-Disposition", "attachment; filename=\"" + file.getName() + "\"");
-        IOUtils.copyLarge(fileInputStream, output);
-        output.flush();
     }
 
 }

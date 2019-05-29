@@ -1,14 +1,13 @@
 package com.example.demo.model;
 
+import com.example.demo.model.enums.TaskType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.Type;
 
 import javax.persistence.*;
 import java.util.Date;
-import java.util.UUID;
 
 @Data
 @AllArgsConstructor
@@ -32,5 +31,9 @@ public class Task {
 
     @Column
     private boolean downloaded;
+
+    @Column
+    @Enumerated(EnumType.STRING)
+    private TaskType taskType;
 
 }
