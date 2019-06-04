@@ -8,10 +8,11 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @EnableAsync
 @EnableScheduling
-public class DemoApplication {
+public class QueueingDemoApplication  {
+
 
     public static void main(String[] args) {
-        SpringApplication.run(DemoApplication.class, args);
+        SpringApplication.run(QueueingDemoApplication.class, args);
     }
-
+    
 }
